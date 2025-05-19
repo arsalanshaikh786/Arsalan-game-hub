@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OX Game with Score & Rounds</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #74ebd5, #acb6e5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+    }
+    .game-container {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      text-align: center;
+      width: 350px;
+      position: relative;
+      z-index: 1;
+    }
+    h2 {
+      margin-bottom: 20px;
+    }
+    .names-inputs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .names-inputs input {
+      flex: 1;
+      padding: 8px;
+      font-size: 14px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+    .btn {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      background: #74ebd5;
+      color: white;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 80px);
+      grid-gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .cell {
+      width: 80px;
+      height: 80px;
+      background: #f0f0f0;
+      font-size: 36px;
+      font-weight: bold;
+      color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border-radius: 10px;
+      user-select: none;
+      transition: 0.3s;
+    }
+    .cell:hover {
+      background: #d2e3f1;
+    }
+    .cell.win {
+      animation: glow 1s infinite alternate;
+      box-shadow: 0 0 20px 6px #f39c12;
+      background-color: #ffeaa7;
+      color: #d35400;
+    }
+    @keyframes glow {
+      from { box-shadow: 0 0 10px 3px #f39c12; }
+      to { box-shadow: 0 0 25px 10px #f39c12; }
+    }
+    #status {
+      font-weight: bold;
+      min-height: 24px;
+    }
+    .scoreboard {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      font-weight: bold;
+    }
+    .round-info {
+      margin-bottom: 15px;
+      font-weight: bold;
+    }
+
+    /* Confetti container */
+    #confetti {
+      pointer-events: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: visible;
+      z-index: 9999;
+    }
+    .confetti-piece {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background-color: red;
+      opacity: 0.8;
+      will-change: transform, opacity;
+      border-radius: 2px;
+      animation: confetti-fall linear forwards;
+    }
+
+    @keyframes confetti-fall {
+      0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-container" role="main" aria-label="Tic Tac Toe Game">
+    <h2>OX Game - Tic Tac Toe</h2>
+
+    <div class="names-inputs" id="nameInputs">
+      <input id="playerXName" type="text" placeholder="Player X Name" value="Player X" />
+      <input id="playerOName" type="text" placeholder="Player O Name" value="Player O" />
+    </div>
+    <button class="btn" id="startBtn">Start Game</button>
+
+    <div class="scoreboard" id="scoreboard" style="display:none;">
+      <div id="playerXScore">Player X: 0</div>
+      <div id="playerOScore">Player O: 0</div>
+    </div>
+
+    <div class="round-info" id="roundInfo" style="display:none;">Round: 1 / 10</div>
+
+    <div class="board" id="board" style="display:none;"></div>
+
+    <button class="btn" id="restartBtn" style="display:none;">Restart Game</button>
+
+    <div id="status"></div>
+  </div>
+
+  <div id="confetti"></div>
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const board = document.getElementById('board');
+    const status = document.getElementById('status');
+    const nameInputs = document.getElementById('nameInputs');
+    const playerXNameInput = document.getElementById('playerXName');
+    const playerONameInput = document.getElementById('playerOName');
+    const scoreboard = document.getElementById('scoreboard');
+    const playerXScoreDiv = document.getElementById('playerXScore');
+    const playerOScoreDiv = document.getElementById('playerOScore');
+    const roundInfo = document.getElementById('roundInfo');
+    const confettiContainer = document.getElementById('confetti');
+
+    let currentPlayer = "X";
+    let cells = [];
+    let gameActive = false;
+    let round = 1;
+    const maxRounds = 10;
+
+    let playerXName = "Player X";
+    let playerOName = "Player O";
+    let playerXScore = 0;
+    let playerOScore = 0;
+
+    function createBoard() {
+      board.innerHTML = "";
+      cells = Array(9).fill(null);
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.dataset.index = i;
+        cell.addEventListener('click', handleCellClick);
+        board.appendChild(cell);
+      }
+      status.textContent = `${getCurrentPlayerName()}'s Turn (${currentPlayer})`;
+    }
+
+    function handleCellClick(e) {
+      const index = e.target.dataset.index;
+      if (!gameActive || cells[index]) return;
+
+      cells[index] = currentPlayer;
+      e.target.textContent = currentPlayer;
+
+      if (checkWin()) {
+        highlightWinCells();
+        status.textContent = `${getCurrentPlayerName()} Wins this round!`;
+        updateScore();
+        gameActive = false;
+        if (round < maxRounds) {
+          setTimeout(nextRound, 2000);
+        } else {
+          setTimeout(showFinalWinner, 2000);
+        }
+      } else if (cells.every(cell => cell)) {
+        status.textContent = "It's a Draw!";
+        gameActive = false;
+        if (round < maxRounds) {
+          setTimeout(nextRound, 2000);
+        } else {
+          setTimeout(showFinalWinner, 2000);
+        }
+      } else {
+        togglePlayer();
+        status.textContent = `${getCurrentPlayerName()}'s Turn (${currentPlayer})`;
+      }
+    }
+
+    function checkWin() {
+      const winPatterns = [
+        [0,1,2], [3,4,5], [6,7,8],
+        [0,3,6], [1,4,7], [2,5,8],
+        [0,4,8], [2,4,6]
+      ];
+
+      return winPatterns.some(pattern => {
+        const [a,b,c] = pattern;
+        if (cells[a] && cells[a] === cells[b] && cells[a] === cells[c]) {
+          pattern.forEach(i => {
+            board.children[i].classList.add('win');
+          });
+          return true;
+        }
+        return false;
+      });
+    }
+  function highlightWinCells() {
+      // already done in checkWin()
+    }
+
+    function togglePlayer() {
+      currentPlayer = currentPlayer === "X" ? "O" : "X";
+    }
+
+    function getCurrentPlayerName() {
+      return currentPlayer === "X" ? playerXName : playerOName;
+    }
+
+    function updateScore() {
+      if (currentPlayer === "X") {
+        playerXScore++;
+        playerXScoreDiv.textContent = `${playerXName}: ${playerXScore}`;
+      } else {
+        playerOScore++;
+        playerOScoreDiv.textContent = `${playerOName}: ${playerOScore}`;
+      }
+    }
+
+    function nextRound() {
+      round++;
+      roundInfo.textContent = `Round: ${round} / ${maxRounds}`;
+      resetBoard();
+      gameActive = true;
+      status.textContent = `${getCurrentPlayerName()}'s Turn (${currentPlayer})`;
+    }
+
+    function resetBoard() {
+      cells.fill(null);
+      for (let cell of board.children) {
+        cell.textContent = "";
+        cell.classList.remove('win');
+      }
+    }
+
+    function resetGame() {
+      round = 1;
+      playerXScore = 0;
+      playerOScore = 0;
+      currentPlayer = "X";
+
+      playerXScoreDiv.textContent = `${playerXName}: 0`;
+      playerOScoreDiv.textContent = `${playerOName}: 0`;
+      roundInfo.textContent = `Round: 1 / ${maxRounds}`;
+
+      resetBoard();
+      gameActive = true;
+      status.textContent = `${getCurrentPlayerName()}'s Turn (${currentPlayer})`;
+      clearConfetti();
+      restartBtn.style.display = 'none';
+      startBtn.style.display = 'none';
+      nameInputs.style.display = 'none';
+      board.style.display = 'grid';
+      scoreboard.style.display = 'flex';
+      roundInfo.style.display = 'block';
+    }
+
+    function showFinalWinner() {
+      gameActive = false;
+      if (playerXScore > playerOScore) {
+        status.textContent = `${playerXName} wins the game! Congratulations!`;
+        startConfetti();
+      } else if (playerOScore > playerXScore) {
+        status.textContent = `${playerOName} wins the game! Congratulations!`;
+        startConfetti();
+      } else {
+        status.textContent = "The game ended in a draw!";
+      }
+      restartBtn.style.display = 'inline-block';
+    }
+
+    // Confetti functions
+    function startConfetti() {
+      clearConfetti();
+      const colors = ['#f94144','#f3722c','#f9c74f','#90be6d','#577590'];
+      const numPieces = 100;
+      for (let i = 0; i < numPieces; i++) {
+        const confetti = document.createElement('div');
+        confetti.classList.add('confetti-piece');
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.left = Math.random() * 100 + 'vw';
+        confetti.style.animationDuration = (2 + Math.random() * 3) + 's';
+        confetti.style.animationDelay = (Math.random() * 3) + 's';
+        confettiContainer.appendChild(confetti);
+      }
+      setTimeout(clearConfetti, 5000);
+    }
+
+    function clearConfetti() {
+      confettiContainer.innerHTML = '';
+    }
+
+    // Event Listeners
+    startBtn.addEventListener('click', () => {
+      playerXName = playerXNameInput.value.trim() || "Player X";
+      playerOName = playerONameInput.value.trim() || "Player O";
+
+      playerXScoreDiv.textContent = `${playerXName}: 0`;
+      playerOScoreDiv.textContent = `${playerOName}: 0`;
+
+      round = 1;
+      roundInfo.textContent = `Round: ${round} / ${maxRounds}`;
+
+      startBtn.style.display = 'none';
+      nameInputs.style.display = 'none';
+      board.style.display = 'grid';
+      scoreboard.style.display = 'flex';
+      roundInfo.style.display = 'block';
+
+      createBoard();
+      gameActive = true;
+      status.textContent = `${getCurrentPlayerName()}'s Turn (${currentPlayer})`;
+    });
+
+    restartBtn.addEventListener('click', () => {
+      resetGame();
+    });
+  </script>
+</body>
+</html>
+  
