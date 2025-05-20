@@ -32,38 +32,39 @@
 
     .game-container {
       background: var(--card-bg);
-      padding: 35px;
-      border-radius: 20px;
-      width: 350px;
+      padding: 20px;
+      border-radius: 16px;
+      width: 85%;
+      max-width: 320px;
       text-align: center;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      box-shadow: 0 15px 30px rgba(0,0,0,0.2);
       color: var(--text-color);
       transition: 0.5s;
     }
 
     h2 {
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
 
     .question {
-      font-size: 26px;
+      font-size: 22px;
       font-weight: bold;
-      margin: 20px 0;
+      margin: 15px 0;
     }
 
     .input-box {
-      padding: 10px;
-      font-size: 22px;
-      width: 100px;
+      padding: 8px;
+      font-size: 20px;
+      width: 90px;
       border-radius: 8px;
       border: 2px solid #ccc;
       text-align: center;
     }
 
     .btn {
-      padding: 10px 20px;
-      font-size: 16px;
-      margin: 10px 5px;
+      padding: 8px 16px;
+      font-size: 15px;
+      margin: 8px 4px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
@@ -78,7 +79,7 @@
     }
 
     .score, .timer {
-      margin-top: 15px;
+      margin-top: 10px;
       font-weight: bold;
     }
 
@@ -88,25 +89,49 @@
 
     #message {
       margin-top: 10px;
-      font-size: 18px;
+      font-size: 16px;
     }
 
     .leaderboard {
-      margin-top: 20px;
+      margin-top: 15px;
       text-align: left;
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .theme-toggle {
       position: absolute;
-      top: 20px;
-      right: 20px;
+      top: 10px;
+      right: 10px;
       background: var(--card-bg);
       color: var(--text-color);
       border: none;
-      padding: 8px 12px;
+      padding: 6px 10px;
       border-radius: 8px;
       cursor: pointer;
+      font-size: 14px;
+    }
+
+    .number-board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 15px 0;
+      justify-items: center;
+    }
+
+    .number-btn {
+      font-size: 18px;
+      padding: 10px;
+      width: 50px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: #ddd;
+      transition: 0.2s;
+    }
+
+    .number-btn:hover {
+      background: #bbb;
     }
   </style>
 </head>
@@ -116,10 +141,28 @@
   <div class="game-container">
     <h2>Quick Add</h2>
     <div class="question" id="question">Press Start</div>
-    <input class="input-box" type="number" id="answer" />
-    <br/>
+    <input class="input-box" type="number" id="answer" disabled />
+
+    <!-- Number Board -->
+    <div class="number-board">
+      <button class="number-btn" onclick="appendNumber(1)">1</button>
+      <button class="number-btn" onclick="appendNumber(2)">2</button>
+      <button class="number-btn" onclick="appendNumber(3)">3</button>
+      <button class="number-btn" onclick="appendNumber(4)">4</button>
+      <button class="number-btn" onclick="appendNumber(5)">5</button>
+      <button class="number-btn" onclick="appendNumber(6)">6</button>
+      <button class="number-btn" onclick="appendNumber(7)">7</button>
+      <button class="number-btn" onclick="appendNumber(8)">8</button>
+      <button class="number-btn" onclick="appendNumber(9)">9</button>
+      <button class="number-btn" onclick="clearInput()">C</button>
+      <button class="number-btn" onclick="appendNumber(0)">0</button>
+      <button class="number-btn" onclick="backspace()">←</button>
+    </div>
+
     <button class="btn" onclick="submitAnswer()">Submit</button>
     <button class="btn" onclick="startGame()">Start</button>
+    <button class="btn" onclick="shareScore()">Share Score</button>
+
     <div class="timer" id="timer">Time: 10</div>
     <div class="score" id="score">Score: 0 | Level: 1</div>
     <div id="message"></div>
@@ -131,8 +174,8 @@
   </div>
 
   <!-- Sound Effects -->
-  <audio id="correctSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_b2f6986499.mp3" preload="auto"></audio>
-  <audio id="wrongSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_e0b4e7e33e.mp3" preload="auto"></audio>
+  <audio id="correctSound" src="correct-choice-43861.mp3" preload="auto"></audio>
+  <audio id="wrongSound" src="mixkit-wrong-answer-bass-buzzer-948 (1).mp3" preload="auto"></audio>
 
   <script>
     let num1, num2, correctAnswer;
@@ -158,7 +201,7 @@
       correctAnswer = num1 + num2;
       document.getElementById("question").innerText = `${num1} + ${num2} = ?`;
       document.getElementById("answer").value = "";
-      timeLeft = 10 - Math.min(level - 1, 5); // Reduce time with levels
+      timeLeft = 10 - Math.min(level - 1, 5);
     }
 
     function submitAnswer() {
@@ -210,7 +253,36 @@
     function renderLeaderboard() {
       const scores = JSON.parse(localStorage.getItem("leaderboard") || "[]");
       const list = document.getElementById("leaderboard");
-      list.innerHTML = scores.map((s, i) => `<li>#${i+1} - ${s}</li>`).join('');
+      list.innerHTML = scores.map((s, i) => `<li>#${i + 1} - ${s}</li>`).join('');
+    }
+
+    function shareScore() {
+      const shareMessage = `Hey! I just scored ${score} points on Quick Add at Level ${level}. Can you beat my score? Try it here: ${window.location.href}`;
+      if (navigator.share) {
+        navigator.share({
+          title: 'Quick Add Score',
+          text: shareMessage,
+          url: window.location.href
+        }).catch(err => console.log('Share failed:', err));
+      } else {
+        navigator.clipboard.writeText(shareMessage).then(() => {
+          alert("Score copied! Share it with your friends.");
+        });
+      }
+    }
+
+    function appendNumber(num) {
+      const input = document.getElementById("answer");
+      input.value += num;
+    }
+
+    function clearInput() {
+      document.getElementById("answer").value = "";
+    }
+
+    function backspace() {
+      const input = document.getElementById("answer");
+      input.value = input.value.slice(0, -1);
     }
 
     renderLeaderboard();
